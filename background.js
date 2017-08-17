@@ -95,11 +95,27 @@ function reverseSearch(info, storedSettings) {
   
   function openImageSearch(tabs) {
     tabIndex = getTabIndex(openTabAt, tabs);
-    chrome.tabs.create({
-      url: searchProvider.replace('%s', encodeURIComponent(imageURL)),
-      active: !openInBackground,
-      index: tabIndex
-    });
+    chrome.tabs.create(
+      {
+        //url: searchProvider.replace('%s', encodeURIComponent(imageURL)),
+        url: chrome.runtime.getURL('redirect/redirect.html'),
+        active: !openInBackground,
+        index: tabIndex
+      },
+      function(tab) {
+        var handler = function(tabId, changeInfo) {
+          if (tabId === tab.id && changeInfo.status === "complete") {
+            chrome.tabs.onUpdated.removeListener(handler);
+            chrome.tabs.sendMessage(tabId, {type: 'POST', url: "http://httpbin.org/post", data: {"hello": "world", "lorem": "ipsum"}});
+          }
+        }
+
+        // in case we're faster than page load (usually):
+        chrome.tabs.onUpdated.addListener(handler);
+        // just in case we're too late with the listener:
+        // chrome.tabs.sendMessage(tab.id, {url: url, data: data});
+      }
+    );
   }
   
   chrome.tabs.query({currentWindow: true, active: true}, openImageSearch);
